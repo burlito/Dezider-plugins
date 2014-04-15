@@ -1,6 +1,7 @@
+from pyhole.core import plugin, utils
 import re
 
-class message():
+class message(object):
     def __init__(self, message):
         self._source = message
         self.channel = message.target
@@ -10,7 +11,11 @@ class message():
         self._parse_nick()
         
     def getChannel(self):
-        print self.channel
+        reObj = re.match(r'([^\s]*).*', self.channel)
+        try:
+            return reObj.group(1)
+        except:
+            return ""
         
     def getSender(self):
         return self.sender
@@ -32,5 +37,5 @@ class message():
             self.text = self._fullMessage
 
     def _parse_nick(self):
-        reObj = re.match(r'([.]{0,9})!.*') #FIXME: what if is \! in identity
+        reObj = re.match(r'(.*)!.*', self._fullIdent) #FIXME: what if is \! in identity
         self.sender = reObj.group(1)
