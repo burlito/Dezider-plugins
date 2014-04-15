@@ -1,8 +1,8 @@
 from pyhole.core import plugin, utils
 from xlc_libs.message import message as bMessage
 from sqlalchemy import create_engine
-from sqlalchemy import Table, Column
-from sqlalchemy import Integer, String, TIMESTAMP, MetaData
+from sqlalchemy import Table, Column, func
+from sqlalchemy import Integer, String, TIMESTAMP, TEXT, MetaData
 
 
 class MysqlLogger(plugin.Plugin):
@@ -34,10 +34,15 @@ class MysqlLogger(plugin.Plugin):
         self.db_chanlog = Table(
             'chanlog', self.db_metadata,
             Column('ID', Integer, primary_key=True),
-            Column('sender', String),
-            Column('sender_user', String),
-            Column('message', String),
-            Column('timestamp', TIMESTAMP)
+            Column('sender', String(14), nullable=False),
+            Column('sender_user', String(20)),
+            Column('message', TEXT),
+            Column(
+                'timestamp',
+                TIMESTAMP,
+                nullable=False,
+                default=func.now()
+                )
         )
         #FIXME: add try, case block
         self.db_conn = self.db_engine.connect()
