@@ -34,6 +34,7 @@ class MysqlLogger(plugin.Plugin):
         self.db_chanlog = Table(
             'chanlog', self.db_metadata,
             Column('ID', Integer, primary_key=True),
+            Column('channel', String(14)),
             Column('sender', String(14), nullable=False),
             Column('sender_user', String(20)),
             Column('message', TEXT),
@@ -55,6 +56,7 @@ class MysqlLogger(plugin.Plugin):
     def mysql_logger(self, message, params=None, **kwargs):
         msg = bMessage(message)
         ins = self.db_chanlog.insert().values(
+            channel=msg.getChannel(),
             sender=msg.getSender(),
             sender_user=msg.getSenderIdent(),
             message=msg.getFullText()
