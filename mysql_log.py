@@ -2,14 +2,15 @@ from pyhole.core import plugin, utils
 from xlc_libs.message import message as bMessage
 from sqlalchemy import create_engine
 from sqlalchemy import Table, Column
-from sqlalchemy import Integer, String, Timestamp, MetaData
+from sqlalchemy import Integer, String, TIMESTAMP, MetaData
+
 
 class MysqlLogger(plugin.Plugin):
     def __init__(self, irc):
 #        super(plugin.Plugin, self).__init__(irc)
         self.irc = irc
         self.name = self.__class__.__name__
-#        self.disabled = False
+        self.disabled = False
         try:
             self.config = utils.get_config("MysqlLogger")
             db_name = self.config.get("db_name")
@@ -26,7 +27,6 @@ class MysqlLogger(plugin.Plugin):
             print "Could not load MysqlLogger"
             #self.disabled = True
         #DbConnect
-        #FIXME: add try, case block
         self.db_engine = create_engine(
             '' + db_type + '://' + db_user + ':' + db_pass + '@' + db_host +
             '/' + db_name
@@ -38,22 +38,22 @@ class MysqlLogger(plugin.Plugin):
             Column('sender', String),
             Column('sender_user', String),
             Column('message', String),
-            Column('timestamp', Timestamp)
+            Column('timestamp', TIMESTAMP)
         )
+        #FIXME: add try, case block
+        self.db_conn = self.db_engine.connect()
         #FIXME: if table didn't exist call _installPlugin
 
     def _installPlugin(self):
         self.db_metadata.create_all(self.db_engine)
 
-    @plugin.hook_add_command('ahoj')
-    def ahoj(self, message, params=None, **kwargs):
-        message.dispatch("no, cau")
-
     @plugin.hook_add_msg_regex('.*')
     def mysql_logger(self, message, params=None, **kwargs):
-        print "hook zareagoval"
         msg = bMessage(message)
-        print "from:", msg.getSender(), "EOL"
-        print "to:", msg.getRecipient(), "EOL"
-        print "channel:", msg.getChannel(), "EOL"
-        print "text:", msg.getText(), "EOL"
+        ins = self.db_chanlog.insert().values(
+            sender=msg.getSender(),
+            sender_user=msg.getSenderIdent(),
+            message=msg.getFullText()
+        )
+        ins.compile().params
+        self.db_conn.execute(ins)
