@@ -18,7 +18,6 @@ class MysqlLogger(plugin.Plugin):
             db_pass = self.config.get("db_password")
             db_host = self.config.get("db_host")
             try:
-                #FIXME: not implemented
                 db_type = self.config.get("db_type")
             except:
                 db_type = "mysql"
