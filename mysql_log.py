@@ -3,6 +3,7 @@ from xlc_libs.message import message as bMessage
 from sqlalchemy import create_engine
 from sqlalchemy import Table, Column, func
 from sqlalchemy import Integer, String, TIMESTAMP, TEXT, MetaData
+from sqlalchemy.exc import OperationalError
 
 
 class MysqlLogger(plugin.Plugin):
@@ -11,6 +12,9 @@ class MysqlLogger(plugin.Plugin):
         self.irc = irc
         self.name = self.__class__.__name__
         self.disabled = False
+        self._connectToDatabase()
+
+    def _connectToDatabase(self):
         try:
             self.config = utils.get_config("MysqlLogger")
             db_name = self.config.get("db_name")
@@ -45,12 +49,33 @@ class MysqlLogger(plugin.Plugin):
                 default=func.now()
                 )
         )
-        #FIXME: add try, case block
-        self.db_conn = self.db_engine.connect()
+        try:
+            self.db_conn = self.db_engine.connect()
+        except OperationalError:
+            print 'Nedalo sa mi pripojit sa do databazy'
+            #FIXME: send warning to user/channel
         #FIXME: if table didn't exist call _installPlugin
 
     def _installPlugin(self):
         self.db_metadata.create_all(self.db_engine)
+
+    @plugin.hook_add_command('MysqlLogRefresh')
+    @utils.admin
+    def refresh(self, message, params=None, **kwargs):
+        """Reload configuration and recconect\
+Database"""
+        try:
+            self.db_conn.close()
+            message.dispatch('Database disconected.')
+        except:
+            message.dispatch('Can`t disconnect from database.')
+            message.dispatch('Are you even connectet to one?')
+
+        try:
+            self._connectToDatabase()
+            message.dispatch('Plugin refreshed')
+        except:
+            message.dispatch('Guess what. Something went wrong')
 
     @plugin.hook_add_msg_regex('.*')
     def mysql_logger(self, message, params=None, **kwargs):
@@ -62,4 +87,14 @@ class MysqlLogger(plugin.Plugin):
             message=msg.getFullText()
         )
         ins.compile().params
-        self.db_conn.execute(ins)
+        try:
+            self.db_conn.execute(ins)
+        except OperationalError:
+            message.dispatch(
+                'Mam nejake problemi z databazou, teraz chvilu neviem logovat\
+ co pisete.'
+            )
+        except Exception:
+            message.dispatch(
+                'MysqlLogger je asi zle loadnuty. Niekto to resetnite.'
+            )
