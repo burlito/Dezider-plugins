@@ -3,6 +3,7 @@ import re
 
 class message(object):
     def __init__(self, message):
+        #FIXME: message is expected to be pyhole.core.irc.message
         self._source = message
         self.channel = message.target
         self._fullMessage = message._message

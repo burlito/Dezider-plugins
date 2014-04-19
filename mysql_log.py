@@ -1,5 +1,6 @@
-from pyhole.core import plugin, utils
+from pyhole.core import plugin, utils, log
 from xlc_libs.message import message as bMessage
+from xlc_libs.event import event as bEvent
 from sqlalchemy import create_engine
 from sqlalchemy import Table, Column, func
 from sqlalchemy import Integer, String, TIMESTAMP, TEXT, MetaData
@@ -36,11 +37,11 @@ class MysqlLogger(plugin.Plugin):
         )
         self.db_metadata = MetaData()
         self.db_chanlog = Table(
-            'chanlog', self.db_metadata,
+            'irc_chanlog', self.db_metadata,
             Column('ID', Integer, primary_key=True),
             Column('channel', String(14)),
             Column('sender', String(14), nullable=False),
-            Column('sender_user', String(20)),
+            Column('sender_user', String(40)),
             Column('message', TEXT),
             Column(
                 'timestamp',
@@ -48,6 +49,20 @@ class MysqlLogger(plugin.Plugin):
                 nullable=False,
                 default=func.now()
                 )
+        )
+        self.db_chanevs = Table(
+            'irc_chanevs', self.db_metadata,
+            Column('ID', Integer, primary_key=True),
+            Column('channel', String(14)),
+            Column('sender', String(14), nullable=False),
+            Column('sender_user', String(40)),
+            Column('evtype', String(10)),
+            Column(
+                'timestamp',
+                TIMESTAMP,
+                nullable=False,
+                default=func.now()
+            )
         )
         try:
             self.db_conn = self.db_engine.connect()
@@ -76,6 +91,21 @@ Database"""
             message.dispatch('Plugin refreshed')
         except:
             message.dispatch('Guess what. Something went wrong')
+
+    @plugin.hook_add_chan_event('*')
+    def event_logger(self, message, params=None, **kvargs):
+        ev = bEvent(message)
+        ins = self.db_chanevs.insert().values(
+            channel=ev.getChannel(),
+            sender=ev.getSender(),
+            sender_user=ev.getSenderIdent(),
+            evtype=ev.getType()
+        )
+        ins.compile().params
+        try:
+            self.db_conn.execute(ins)
+        except Exception:
+            log.get_logger().log('Could not execute SQL to db.')
 
     @plugin.hook_add_msg_regex('.*')
     def mysql_logger(self, message, params=None, **kwargs):
